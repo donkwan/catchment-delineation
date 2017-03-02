@@ -1,4 +1,4 @@
-import sys, os, tempfile
+import os, tempfile, json
 from osgeo import gdal, ogr
 import numpy as np
 from gdalconst import GDT_Int32
@@ -173,6 +173,7 @@ def delineate(coords, basepath, cellsize):
 
         kml2geojson.main.convert(tmpkmlpath, tmpdir)
         with open(tmpkmlpath.replace('.kml', '.geojson')) as f:
-            gj = f.read()
+            gj = json.loads(f.read())
+            gj['features'] = [f for f in gj['features'] if f['properties']['id'] != '0']
 
     return gj
