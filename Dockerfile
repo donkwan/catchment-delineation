@@ -13,6 +13,6 @@ RUN pip3 install flask numpy kml2geojson
 # bundle app source
 ADD . /src
 
-EXPOSE 80
+EXPOSE 8080
 
-CMD ["python3", "/src/app.py"]
+CMD ["python3", "/src/application.py"]

@@ -2,45 +2,43 @@
 from flask import Flask, request
 from hydrology import delineate
 
-app = Flask(__name__)
+
+application = Flask(__name__)
+application.config['BASEPATH'] = '/efs/hydrodata'
 
 
-app.config.from_pyfile('./settings.cfg')
-app.config.from_pyfile('./instance/application.cfg', silent=True)
-
-
-@app.route('/')
+@application.route('/')
 def index():
     return 'Hello, hydrologist!'
 
 
-@app.route('/api/delineate_point')
+@application.route('/api/delineate_point')
 def delineate_point_api():
     lat = request.args.get('lat', None, type=float)
     lon = request.args.get('lon', None, type=float)
     cellsize = request.args.get('cellsize', 15, type=float)
 
     if lat is None or lon is None:
-        return 'Hello, again!'
+        return 'Hello, again! Did you forget a lat or lon?'
 
     else:
-        gj = delineate.delineate([(lat, lon)], app.config['BASEPATH'], cellsize)
+        gj = delineate.delineate([(lat, lon)], application.config['BASEPATH'], cellsize)
         return gj
 
 
-@app.route('/api/delineate_points')
+@application.route('/api/delineate_points')
 def delineate_points_api():
     coords = eval(request.args.get('coords', 'None'))
     cellsize = request.args.get('cellsize', 15, type=float)
 
     if coords is None:
-        return 'Hello, again!'
+        return 'Hello, again! Did you forget the coords? [(lat1,lon1),(lat2,lon2),...]'
 
     else:
-        basepath = app.config['BASEPATH']
+        basepath = application.config['BASEPATH']
         gj = delineate.delineate(coords, basepath, cellsize)
         return gj
 
 
 if __name__ == '__main__':
-    app.run(debug=False, port=80)
+    application.run(host='0.0.0.0', port=8080, debug=True)
