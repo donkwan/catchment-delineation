@@ -1,4 +1,4 @@
-import os, tempfile, subprocess
+import sys, os, tempfile
 from osgeo import gdal, ogr
 import numpy as np
 from gdalconst import GDT_Int32
@@ -70,6 +70,9 @@ def delineate(coords, basepath, cellsize):
 
         region = findregion(lat, lon)
 
+        if i==0:
+            originRegion = region
+
         if region not in src:
             dataset = '{}_dir_{}s'.format(region, cellsize)
 
@@ -83,79 +86,68 @@ def delineate(coords, basepath, cellsize):
             src[region]['gt'] = bil.GetGeoTransform()
             src[region]['fdir'] = bil.GetRasterBand(1)
 
-            catchments[region] = {}
-
-        x, y = lonlat2xy(lon, lat, src[region]['gt'])
-        catchments[region][(x, y)] = i
+        x, y = lonlat2xy(lon, lat, src[originRegion]['gt'])
+        val = i + 1
+        catchments[(x, y)] = val
 
     for i, (lat, lon) in enumerate(coords):
 
         # the core routine to find the catchment
-        def update_catchments(region, x, y, val):
+        def update_catchments(region, x, y, xt, yt, val):
             fdir = src[region]['fdir']
             area = fdir.ReadAsArray(x - 1, y - 1, 3, 3)  # does not account for edge cases yet
-            catchments[region][(x, y)] = val
+
+            catchments[(xt, yt)] = val
 
             for i in range(3):  # rows
                 for j in range(3):  # columns
                     if area[i, j] == contributions[(i, j)]:
                         xnew = x + (j - 1)
                         ynew = y + (i - 1)
+                        xtnew = xt + (j - 1)
+                        ytnew = yt + (i - 1)
 
                         # need to update region here based on xnew, ynew
                         # in the meantime, just assume the region is the same
-                        if (xnew, ynew) not in catchments[region]:
-                            update_catchments(region, xnew, ynew, val)
+                        if (xtnew, ytnew) not in catchments:
+                            update_catchments(region, xnew, ynew, xtnew, ytnew, val)
 
         # load initial region of point
-        region = findregion(lat, lon)
         x, y = lonlat2xy(lon, lat, src[region]['gt'])
+        xt, yt = lonlat2xy(lon, lat, src[originRegion]['gt'])
         val = i + 1
-        # update catchments
-        update_catchments(region, x, y, val)
 
-    # convert catchments to geotiffs
-    tmppaths = []
+        # update catchments
+        update_catchments(region, x, y, xt, yt, val)
+
+    # create numpy array
+    xmin = min([x for (x, y) in catchments])
+    xmax = max([x for (x, y) in catchments])
+    ymin = min([y for (x, y) in catchments])
+    ymax = max([y for (x, y) in catchments])
+
+    # get the cols & rows
+    cols = xmax - xmin + 1
+    rows = ymax - ymin + 1
+    array = np.zeros((rows, cols))
+
+    for (x, y), val in catchments.items():
+        xnorm = x - xmin
+        ynorm = y - ymin
+        array[ynorm, xnorm] = val
+
+    # define raster origin
+    originLon, originLat = xy2lonlat(xmin, ymin, src[originRegion]['gt'])
+    cellWidth = cellHeight = cellsize / 60 / 60
+
     layername = 'catchments'
     with tempfile.TemporaryDirectory() as tmpdir:
-        for region in catchments:
-
-            # convert region catchments to raster
-            # 1. create numpy array
-            xmin = min([xy[0] for xy in catchments[region]])
-            xmax = max([xy[0] for xy in catchments[region]])
-            ymin = min([xy[1] for xy in catchments[region]])
-            ymax = max([xy[1] for xy in catchments[region]])
-            cols = xmax - xmin + 1
-            rows = ymax - ymin + 1
-            array = np.zeros((rows, cols))
-
-            for (x, y), val in catchments[region].items():
-                xnorm = x - xmin
-                ynorm = y - ymin
-                array[ynorm, xnorm] = val
-
-            # define raster origin
-            originLon, originLat = xy2lonlat(xmin, ymin, src[region]['gt'])
-            cellWidth = cellHeight = cellsize / 60 / 60
-
-            # create catchments raster
-            tmppath = os.path.join(tmpdir, region + '.tif')
-            tmppaths.append(tmppath)
-            geotiff = geodriver.Create(tmppath, cols, rows, 1, GDT_Int32)
-            geotiff.SetGeoTransform((originLon, cellWidth, 0, originLat, 0, -cellHeight))
-            geotiff.GetRasterBand(1).WriteArray(array)
-            geotiff.FlushCache()
-            del geotiff
-
-        # combine geotiffs
-        tmppathsstr = ' '.join(tmppaths)
-        outpath = os.path.join(tmpdir, layername + '.tif')
-        os.system('gdal_merge.py {} -o {} -q'.format(tmppathsstr, outpath))
-
-        # open combined geotiff
-        tif = gdal.Open(outpath)
-        tifband = tif.GetRasterBand(1)
+        # create catchments raster
+        tmppath = os.path.join(tmpdir, 'out.tif')
+        geotiff = geodriver.Create(tmppath, cols, rows, 1, GDT_Int32)
+        geotiff.SetGeoTransform((originLon, cellWidth, 0, originLat, 0, -cellHeight))
+        geoband = geotiff.GetRasterBand(1)
+        geoband.WriteArray(array)
 
         # prepare output vector (kml) layer
         # NB: GDAL's GeoJSON output is not formatted correctly. So the hack here
@@ -171,10 +163,11 @@ def delineate(coords, basepath, cellsize):
 
         # The "2" here indicates to write the GeoTIFF values to the "id" column.
         # Other options are 1: "name" column and 2: "description" column
-        gdal.Polygonize(tifband, None, tmplayer, 2, [], callback=None)
+        gdal.Polygonize(geoband, None, tmplayer, 2, [], callback=None)
 
-        del tif
-        del tifband
+        # geotiff.FlushCache()
+        del geoband
+        del geotiff
         del tmpkmlsrc
         del tmplayer
 
