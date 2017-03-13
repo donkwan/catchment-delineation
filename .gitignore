@@ -11,3 +11,7 @@ Dockerrun.local.json
 !.elasticbeanstalk/*.global.yml
 *.wpr
 *.wpu
+
+hydrodata/
+
+*.zip

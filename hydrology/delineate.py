@@ -53,7 +53,7 @@ def findregion(lat, lon):
     return region
 
 
-def delineate(coords, basepath, cellsize):
+def delineate(coords, basepath, cellsize, featuretype):
     # register the bil driver
     bildriver = gdal.GetDriverByName('EHdr')
     bildriver.Register()
@@ -175,5 +175,7 @@ def delineate(coords, basepath, cellsize):
         with open(tmpkmlpath.replace('.kml', '.geojson')) as f:
             gj = json.loads(f.read())
             gj['features'] = [f for f in gj['features'] if f['properties']['id'] != '0']
+            if len(gj['features']) == 1 and featuretype == 'Feature':
+                gj = gj['features'][0]
 
     return gj
