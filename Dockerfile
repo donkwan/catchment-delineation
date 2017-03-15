@@ -13,7 +13,7 @@ RUN pip3 install flask numpy requests kml2geojson beautifulsoup4
 ADD . /src
 
 # download HydroSHEDS data from USGS (remove -o if successful once to prevent unnecessary re-downloads)
-RUN python3 /src/init.py -p /efs/hydrodata -r ca
+RUN python3 /src/init.py -p /efs/hydrodata -r ca na af sa
 
 EXPOSE 8080
 

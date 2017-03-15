@@ -3,7 +3,7 @@ import requests
 from bs4 import BeautifulSoup
 
 
-def main(path, cellsize, overwrite, region):
+def main(path, cellsize, overwrite, regions):
 
     if not os.path.exists(path):
         # make the directory, but only if the root path exists (e.g., if '/efs' exists)
@@ -32,7 +32,7 @@ def main(path, cellsize, overwrite, region):
                 continue
         
         # for testing only
-        if region and zfname[:2] != region:
+        if regions and zfname[:2] not in regions:
             continue
     
         print('Getting %s' % zfname)
@@ -57,7 +57,7 @@ if __name__ == '__main__':
     parser.add_argument('-p', '--path', default='./hydrodata', help='''Path (local) or region (efs)''')
     parser.add_argument('-c', '--cellsize', default=15, help='''Cell size in arc-seconds (3, 15 or 30)''')
     parser.add_argument('-o', '--overwrite', action='store_true', help='''Overwrite any existing folders''')
-    parser.add_argument('-r', '--region', default=False, help='''Specify a region (mainly for testing)''')
+    parser.add_argument('-r', '--regions', nargs='+', default=False, help='''Regions to include, separated by a single space''')
     args = parser.parse_args()
     
-    main(args.path, args.cellsize, args.overwrite, args.region)
+    main(args.path, args.cellsize, args.overwrite, args.regions)

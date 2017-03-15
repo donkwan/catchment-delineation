@@ -53,7 +53,7 @@ def findregion(lat, lon):
     return region
 
 
-def delineate(coords, basepath, cellsize, featuretype):
+def delineate(coords, basepath, cellsize, featuretype='FeatureCollection'):
     # register the bil driver
     bildriver = gdal.GetDriverByName('EHdr')
     bildriver.Register()

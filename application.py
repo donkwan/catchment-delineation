@@ -4,8 +4,8 @@ from hydrology import delineate
 
 
 application = Flask(__name__)
-#application.config['BASEPATH'] = '/efs/hydrodata'
-application.config['BASEPATH'] = r'D:\Users\david\Documents\GitHub\catchment-delineation\hydrodata'
+application.config['BASEPATH'] = '/efs/hydrodata'
+#application.config['BASEPATH'] = r'D:\Users\david\Documents\GitHub\catchment-delineation\hydrodata'
 
 @application.route('/')
 def index():
@@ -26,7 +26,7 @@ def delineate_point_api():
         return 'Hello, again! Did you forget a lat or lon?'
 
     else:
-        gj = delineate.delineate([(lat, lon)], application.config['BASEPATH'], cellsize, featuretype)
+        gj = delineate.delineate([(lat, lon)], application.config['BASEPATH'], cellsize, featuretype=featuretype)
         return jsonify(geojson=gj)
 
 
@@ -49,5 +49,5 @@ def delineate_points_api():
 
 
 if __name__ == '__main__':
-    #application.run(host='0.0.0.0', port=8080, debug=True)
-    application.run(port=5001, debug=False)
+    application.run(host='0.0.0.0', port=8080, debug=True)
+    #application.run(port=5001, debug=False)
