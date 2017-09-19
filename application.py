@@ -2,10 +2,11 @@
 from flask import Flask, request, jsonify
 from hydrology import delineate
 
-
 application = Flask(__name__)
 application.config['BASEPATH'] = '/efs/hydrodata'
-#application.config['BASEPATH'] = r'D:\Users\david\Documents\GitHub\catchment-delineation\hydrodata'
+
+
+# application.config['BASEPATH'] = r'D:\Users\david\Documents\GitHub\catchment-delineation\hydrodata'
 
 @application.route('/')
 def index():
@@ -27,12 +28,12 @@ def delineate_point_api():
 
     else:
         gj = delineate.delineate([(lat, lon)], application.config['BASEPATH'], cellsize, featuretype=featuretype)
-        return jsonify(geojson=gj)
+        return jsonify(gj)
 
 
 @application.route('/api/delineate_points', methods=['GET', 'POST'])
 def delineate_points_api():
-    if request.method=='GET':
+    if request.method == 'GET':
         coords = eval(request.args.get('coords', 'None'))
         cellsize = request.args.get('cellsize', 15, type=float)
     else:
@@ -45,9 +46,9 @@ def delineate_points_api():
     else:
         basepath = application.config['BASEPATH']
         gj = delineate.delineate(coords, basepath, cellsize)
-        return jsonify(geojson=gj)
+        return jsonify(gj)
 
 
 if __name__ == '__main__':
     application.run(host='0.0.0.0', port=8080, debug=True)
-    #application.run(port=5001, debug=False)
+    # application.run(port=5001, debug=False)
